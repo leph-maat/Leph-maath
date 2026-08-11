@@ -74,10 +74,18 @@ function Login() {
   );
 }
 
-function SessionBar({ session }) {
+function SessionBar({ session, estado }) {
   return (
     <div className="flex justify-between items-center text-xs text-gray-500 mb-4 max-w-2xl mx-auto px-1">
-      <span>{session.user.email}</span>
+      <span className="flex items-center gap-2">
+        {session.user.email}
+        {estado && !estado.pagado && estado.acceso_habilitado && (
+          <span className="text-[var(--leph-gold)]">
+            · {estado.dias_restantes_trial}d de prueba
+          </span>
+        )}
+        {estado && estado.pagado && <span className="text-emerald-400">· cuenta activa</span>}
+      </span>
       <button
         onClick={() => supabase.auth.signOut()}
         className="hover:text-gray-300 transition"
@@ -88,9 +96,94 @@ function SessionBar({ session }) {
   );
 }
 
+function useEstadoCuenta(session) {
+  const [estado, setEstado] = useState(null);
+
+  useEffect(() => {
+    if (!session) {
+      setEstado(null);
+      return;
+    }
+    supabase.rpc('mi_estado_cuenta').then(({ data, error }) => {
+      if (!error && data && data.length > 0) setEstado(data[0]);
+    });
+  }, [session]);
+
+  return estado;
+}
+
+function Paywall() {
+  return (
+    <div className="leph-border rounded-2xl p-6 bg-white/[0.02] text-center">
+      <h2 className="text-lg font-medium mb-2 text-gray-100">Tu prueba de 7 días terminó</h2>
+      <p className="text-sm text-gray-400 mb-4">
+        Podés seguir consultando reportes gratis siempre. Para reportar, corroborar o
+        presentar un descargo, activá tu cuenta.
+      </p>
+      <p className="text-xs text-gray-500">
+        Escribinos para activar el pago — todavía no está la pasarela automática integrada.
+      </p>
+    </div>
+  );
+}
+
+function Ayuda() {
+  const [abierto, setAbierto] = useState(false);
+  return (
+    <div className="leph-border rounded-2xl bg-white/[0.02] mb-8">
+      <button
+        onClick={() => setAbierto(!abierto)}
+        className="w-full flex justify-between items-center px-5 py-3 text-sm text-gray-300"
+      >
+        <span>¿Cómo funciona Leph · MaatH?</span>
+        <span className="text-gray-500">{abierto ? '−' : '+'}</span>
+      </button>
+      {abierto && (
+        <div className="px-5 pb-5 text-sm text-gray-400 space-y-3 border-t leph-border pt-4">
+          <p>
+            <span className="text-gray-200 font-medium">Qué es —</span> una red de reputación
+            para alquileres en zonas turísticas. Funciona en las dos direcciones: inquilinos
+            pueden reportar propietarios turbios, y propietarios pueden reportar inquilinos
+            problemáticos.
+          </p>
+          <p>
+            <span className="text-gray-200 font-medium">Consultar —</span> buscá por nombre,
+            teléfono o dirección antes de cerrar un alquiler. Es gratis, sin login, para
+            siempre.
+          </p>
+          <p>
+            <span className="text-gray-200 font-medium">Reportar —</span> necesitás una cuenta
+            (login gratis con tu email, sin contraseña). Cargá motivo, descripción y evidencia
+            si tenés (fotos, capturas).
+          </p>
+          <p>
+            <span className="text-gray-200 font-medium">Corroborar —</span> si a vos también te
+            pasó algo con esa misma persona/teléfono/dirección, corroborá el reporte con su ID.
+            Con 2 corroboraciones independientes, el reporte pasa a{' '}
+            <span className="text-emerald-400">verificado</span>.
+          </p>
+          <p>
+            <span className="text-gray-200 font-medium">Descargo —</span> si te reportaron y no
+            estás de acuerdo, presentá tu versión con el ID del reporte antes de que se
+            confirme.
+          </p>
+          <p>
+            <span className="text-gray-200 font-medium">Prueba gratis —</span> tenés 7 días
+            desde tu primer login para reportar, corroborar y dar descargos sin costo. Pasado
+            ese plazo, hay que activar la cuenta para seguir escribiendo (consultar sigue
+            siendo gratis siempre).
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function Home() {
   const [tab, setTab] = useState('consultar');
   const session = useSession();
+  const estado = useEstadoCuenta(session);
+  const bloqueado = session && estado && !estado.acceso_habilitado;
 
   return (
     <main className="max-w-2xl mx-auto px-4 py-10">
@@ -102,7 +195,9 @@ export default function Home() {
         </p>
       </header>
 
-      {session && <SessionBar session={session} />}
+      {session && <SessionBar session={session} estado={estado} />}
+
+      <Ayuda />
 
       <nav className="flex gap-2 mb-8 justify-center flex-wrap">
         {[
@@ -126,9 +221,9 @@ export default function Home() {
       </nav>
 
       {tab === 'consultar' && <Consultar />}
-      {tab === 'reportar' && (session ? <Reportar /> : <Login />)}
-      {tab === 'corroborar' && (session ? <Corroborar /> : <Login />)}
-      {tab === 'descargo' && (session ? <Descargo /> : <Login />)}
+      {tab === 'reportar' && (!session ? <Login /> : bloqueado ? <Paywall /> : <Reportar />)}
+      {tab === 'corroborar' && (!session ? <Login /> : bloqueado ? <Paywall /> : <Corroborar />)}
+      {tab === 'descargo' && (!session ? <Login /> : bloqueado ? <Paywall /> : <Descargo />)}
     </main>
   );
 }
