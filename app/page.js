@@ -113,6 +113,32 @@ function useEstadoCuenta(session) {
 }
 
 function Paywall() {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const activar = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session.access_token;
+      const res = await fetch(
+        'https://kjvuhgmkpiewtuqzyjjl.supabase.co/functions/v1/crear-pago',
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      const data = await res.json();
+      if (data.init_point) {
+        window.location.href = data.init_point;
+      } else {
+        setError(data.error || 'No se pudo generar el link de pago.');
+      }
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="leph-border rounded-2xl p-6 bg-white/[0.02] text-center">
       <h2 className="text-lg font-medium mb-2 text-gray-100">Tu prueba de 7 días terminó</h2>
@@ -120,9 +146,14 @@ function Paywall() {
         Podés seguir consultando reportes gratis siempre. Para reportar, corroborar o
         presentar un descargo, activá tu cuenta.
       </p>
-      <p className="text-xs text-gray-500">
-        Escribinos para activar el pago — todavía no está la pasarela automática integrada.
-      </p>
+      <button
+        onClick={activar}
+        disabled={loading}
+        className="w-full bg-gradient-to-r from-[var(--leph-gold)] to-[var(--leph-violet)] text-black font-medium rounded-lg px-4 py-2 text-sm hover:opacity-90 transition disabled:opacity-40"
+      >
+        {loading ? 'Generando link…' : 'Activar cuenta con Mercado Pago'}
+      </button>
+      {error && <p className="text-sm text-red-400 mt-3">{error}</p>}
     </div>
   );
 }
@@ -170,7 +201,7 @@ function Ayuda() {
           <p>
             <span className="text-gray-200 font-medium">Prueba gratis —</span> tenés 7 días
             desde tu primer login para reportar, corroborar y dar descargos sin costo. Pasado
-            ese plazo, hay que activar la cuenta para seguir escribiendo (consultar sigue
+            ese plazo, activás tu cuenta con Mercado Pago en un click (consultar sigue
             siendo gratis siempre).
           </p>
         </div>
