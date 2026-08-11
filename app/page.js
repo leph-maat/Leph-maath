@@ -100,6 +100,41 @@ function Button({ children, ...props }) {
   );
 }
 
+async function subirEvidencia(files) {
+  if (!files || files.length === 0) return [];
+  const paths = [];
+  for (const file of files) {
+    const ext = file.name.split('.').pop();
+    const path = `${crypto.randomUUID()}.${ext}`;
+    const { error } = await supabase.storage
+      .from('evidencias-maath')
+      .upload(path, file);
+    if (error) throw new Error('Error subiendo evidencia: ' + error.message);
+    paths.push(path);
+  }
+  return paths;
+}
+
+function FileInput({ onChange, files }) {
+  return (
+    <div className="mb-3">
+      <label className="block text-xs text-gray-500 mb-1">
+        Evidencia (fotos, capturas — opcional)
+      </label>
+      <input
+        type="file"
+        multiple
+        accept="image/*,.pdf"
+        onChange={(e) => onChange(Array.from(e.target.files))}
+        className="w-full text-sm text-gray-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-white/10 file:text-gray-200 file:text-xs hover:file:bg-white/20"
+      />
+      {files && files.length > 0 && (
+        <p className="text-xs text-gray-500 mt-1">{files.length} archivo(s) seleccionado(s)</p>
+      )}
+    </div>
+  );
+}
+
 function Resultado({ estado, mensaje }) {
   if (!mensaje) return null;
   const color =
@@ -190,6 +225,7 @@ function Reportar() {
   const [motivo, setMotivo] = useState('');
   const [descripcion, setDescripcion] = useState('');
   const [reportanteId, setReportanteId] = useState('');
+  const [files, setFiles] = useState([]);
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState({ estado: '', texto: '' });
 
@@ -200,24 +236,29 @@ function Reportar() {
     }
     setLoading(true);
     setMsg({ estado: '', texto: '' });
-    const { data, error } = await supabase.rpc('crear_reporte', {
-      p_rol: rol,
-      p_motivo: motivo,
-      p_descripcion: descripcion,
-      p_reportante_id: reportanteId,
-      p_persona: persona || null,
-      p_telefono: telefono || null,
-      p_direccion: direccion || null,
-      p_zona: zona,
-    });
-    setLoading(false);
-    if (error) {
-      setMsg({ estado: 'error', texto: 'Error al reportar: ' + error.message });
-      return;
+    try {
+      const evidenciaPaths = await subirEvidencia(files);
+      const { data, error } = await supabase.rpc('crear_reporte', {
+        p_rol: rol,
+        p_motivo: motivo,
+        p_descripcion: descripcion,
+        p_reportante_id: reportanteId,
+        p_persona: persona || null,
+        p_telefono: telefono || null,
+        p_direccion: direccion || null,
+        p_zona: zona,
+        p_evidencia_paths: evidenciaPaths.length > 0 ? evidenciaPaths : null,
+      });
+      if (error) throw error;
+      setMsg({ estado: 'ok', texto: `Reporte creado (id: ${data}).` });
+      setMotivo('');
+      setDescripcion('');
+      setFiles([]);
+    } catch (err) {
+      setMsg({ estado: 'error', texto: err.message });
+    } finally {
+      setLoading(false);
     }
-    setMsg({ estado: 'ok', texto: `Reporte creado (id: ${data}).` });
-    setMotivo('');
-    setDescripcion('');
   };
 
   return (
@@ -231,6 +272,7 @@ function Reportar() {
       <Input placeholder="Motivo (corto, ej: no devolvió depósito)" value={motivo} onChange={(e) => setMotivo(e.target.value)} />
       <Textarea placeholder="Descripción detallada" value={descripcion} onChange={(e) => setDescripcion(e.target.value)} />
       <Input placeholder="Tu identificador (email o teléfono, se hashea)" value={reportanteId} onChange={(e) => setReportanteId(e.target.value)} />
+      <FileInput files={files} onChange={setFiles} />
       <Button onClick={enviar} disabled={loading}>
         {loading ? 'Enviando…' : 'Enviar reporte'}
       </Button>
@@ -284,6 +326,7 @@ function Corroborar() {
 function Descargo() {
   const [reporteId, setReporteId] = useState('');
   const [texto, setTexto] = useState('');
+  const [files, setFiles] = useState([]);
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState({ estado: '', texto: '' });
 
@@ -294,17 +337,22 @@ function Descargo() {
     }
     setLoading(true);
     setMsg({ estado: '', texto: '' });
-    const { data, error } = await supabase.rpc('presentar_descargo', {
-      p_reporte_id: reporteId,
-      p_texto: texto,
-    });
-    setLoading(false);
-    if (error) {
-      setMsg({ estado: 'error', texto: 'Error: ' + error.message });
-      return;
+    try {
+      const evidenciaPaths = await subirEvidencia(files);
+      const { data, error } = await supabase.rpc('presentar_descargo', {
+        p_reporte_id: reporteId,
+        p_texto: texto,
+        p_evidencia_paths: evidenciaPaths.length > 0 ? evidenciaPaths : null,
+      });
+      if (error) throw error;
+      setMsg({ estado: 'ok', texto: `Descargo presentado (id: ${data}).` });
+      setTexto('');
+      setFiles([]);
+    } catch (err) {
+      setMsg({ estado: 'error', texto: err.message });
+    } finally {
+      setLoading(false);
     }
-    setMsg({ estado: 'ok', texto: `Descargo presentado (id: ${data}).` });
-    setTexto('');
   };
 
   return (
@@ -315,6 +363,7 @@ function Descargo() {
       </p>
       <Input placeholder="ID del reporte" value={reporteId} onChange={(e) => setReporteId(e.target.value)} />
       <Textarea placeholder="Tu versión de los hechos" value={texto} onChange={(e) => setTexto(e.target.value)} />
+      <FileInput files={files} onChange={setFiles} />
       <Button onClick={enviar} disabled={loading}>
         {loading ? 'Enviando…' : 'Presentar descargo'}
       </Button>
