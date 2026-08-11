@@ -1,0 +1,25 @@
+@import "tailwindcss";
+
+:root {
+  --leph-gold: #c9a24b;
+  --leph-violet: #7c5cff;
+}
+
+body {
+  background: radial-gradient(ellipse at top, #12121a 0%, #0a0a0f 60%);
+}
+
+.leph-border {
+  border: 1px solid rgba(201, 162, 75, 0.25);
+}
+
+.leph-glow {
+  box-shadow: 0 0 20px rgba(124, 92, 255, 0.15);
+}
+
+.leph-title {
+  background: linear-gradient(90deg, #c9a24b, #7c5cff);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
