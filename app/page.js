@@ -1,22 +1,108 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 
 const ZONAS = ['bariloche', 'villa_la_angostura', 'san_martin_de_los_andes', 'otra'];
 
+function useSession() {
+  const [session, setSession] = useState(undefined); // undefined = cargando
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => setSession(data.session));
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+    return () => listener.subscription.unsubscribe();
+  }, []);
+
+  return session;
+}
+
+function Login() {
+  const [email, setEmail] = useState('');
+  const [enviado, setEnviado] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const enviar = async () => {
+    if (!email) return;
+    setLoading(true);
+    setError('');
+    const { error } = await supabase.auth.signInWithOtp({ email });
+    setLoading(false);
+    if (error) {
+      setError(error.message);
+      return;
+    }
+    setEnviado(true);
+  };
+
+  if (enviado) {
+    return (
+      <div className="leph-border rounded-2xl p-6 bg-white/[0.02] text-center">
+        <p className="text-sm text-gray-200">
+          Te mandamos un link mágico a <span className="text-[var(--leph-gold)]">{email}</span>.
+        </p>
+        <p className="text-xs text-gray-500 mt-2">Abrilo desde este mismo dispositivo para entrar.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="leph-border rounded-2xl p-6 bg-white/[0.02]">
+      <h2 className="text-lg font-medium mb-2 text-gray-100">Iniciá sesión</h2>
+      <p className="text-xs text-gray-500 mb-4">
+        Necesario para reportar, corroborar o presentar un descargo. Sin contraseña — te mandamos un link a tu email.
+      </p>
+      <input
+        type="email"
+        placeholder="tu@email.com"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        className="w-full bg-black/30 leph-border rounded-lg px-3 py-2 text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-[var(--leph-violet)] mb-3"
+      />
+      <button
+        onClick={enviar}
+        disabled={loading || !email}
+        className="w-full bg-gradient-to-r from-[var(--leph-gold)] to-[var(--leph-violet)] text-black font-medium rounded-lg px-4 py-2 text-sm hover:opacity-90 transition disabled:opacity-40"
+      >
+        {loading ? 'Enviando…' : 'Enviarme el link'}
+      </button>
+      {error && <p className="text-sm text-red-400 mt-3">{error}</p>}
+    </div>
+  );
+}
+
+function SessionBar({ session }) {
+  return (
+    <div className="flex justify-between items-center text-xs text-gray-500 mb-4 max-w-2xl mx-auto px-1">
+      <span>{session.user.email}</span>
+      <button
+        onClick={() => supabase.auth.signOut()}
+        className="hover:text-gray-300 transition"
+      >
+        Cerrar sesión
+      </button>
+    </div>
+  );
+}
+
 export default function Home() {
   const [tab, setTab] = useState('consultar');
+  const session = useSession();
 
   return (
     <main className="max-w-2xl mx-auto px-4 py-10">
-      <header className="mb-10 text-center">
+      <header className="mb-6 text-center">
         <div className="text-3xl font-semibold leph-title mb-1">⟁ Leph · MaatH</div>
         <p className="text-sm text-gray-400">
           Reputación bidireccional para alquileres — inquilinos y propietarios,
           zonas turísticas.
         </p>
       </header>
+
+      {session && <SessionBar session={session} />}
 
       <nav className="flex gap-2 mb-8 justify-center flex-wrap">
         {[
@@ -40,9 +126,9 @@ export default function Home() {
       </nav>
 
       {tab === 'consultar' && <Consultar />}
-      {tab === 'reportar' && <Reportar />}
-      {tab === 'corroborar' && <Corroborar />}
-      {tab === 'descargo' && <Descargo />}
+      {tab === 'reportar' && (session ? <Reportar /> : <Login />)}
+      {tab === 'corroborar' && (session ? <Corroborar /> : <Login />)}
+      {tab === 'descargo' && (session ? <Descargo /> : <Login />)}
     </main>
   );
 }
@@ -224,14 +310,13 @@ function Reportar() {
   const [zona, setZona] = useState('bariloche');
   const [motivo, setMotivo] = useState('');
   const [descripcion, setDescripcion] = useState('');
-  const [reportanteId, setReportanteId] = useState('');
   const [files, setFiles] = useState([]);
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState({ estado: '', texto: '' });
 
   const enviar = async () => {
-    if (!motivo || !descripcion || !reportanteId || (!persona && !telefono && !direccion)) {
-      setMsg({ estado: 'error', texto: 'Completá motivo, descripción, tu identificador y al menos un dato del reportado.' });
+    if (!motivo || !descripcion || (!persona && !telefono && !direccion)) {
+      setMsg({ estado: 'error', texto: 'Completá motivo, descripción y al menos un dato del reportado.' });
       return;
     }
     setLoading(true);
@@ -242,7 +327,6 @@ function Reportar() {
         p_rol: rol,
         p_motivo: motivo,
         p_descripcion: descripcion,
-        p_reportante_id: reportanteId,
         p_persona: persona || null,
         p_telefono: telefono || null,
         p_direccion: direccion || null,
@@ -271,7 +355,6 @@ function Reportar() {
       <Select value={zona} onChange={(e) => setZona(e.target.value)} options={ZONAS} />
       <Input placeholder="Motivo (corto, ej: no devolvió depósito)" value={motivo} onChange={(e) => setMotivo(e.target.value)} />
       <Textarea placeholder="Descripción detallada" value={descripcion} onChange={(e) => setDescripcion(e.target.value)} />
-      <Input placeholder="Tu identificador (email o teléfono, se hashea)" value={reportanteId} onChange={(e) => setReportanteId(e.target.value)} />
       <FileInput files={files} onChange={setFiles} />
       <Button onClick={enviar} disabled={loading}>
         {loading ? 'Enviando…' : 'Enviar reporte'}
@@ -283,21 +366,19 @@ function Reportar() {
 
 function Corroborar() {
   const [reporteId, setReporteId] = useState('');
-  const [reportanteId, setReportanteId] = useState('');
   const [comentario, setComentario] = useState('');
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState({ estado: '', texto: '' });
 
   const enviar = async () => {
-    if (!reporteId || !reportanteId) {
-      setMsg({ estado: 'error', texto: 'Completá el ID del reporte y tu identificador.' });
+    if (!reporteId) {
+      setMsg({ estado: 'error', texto: 'Completá el ID del reporte.' });
       return;
     }
     setLoading(true);
     setMsg({ estado: '', texto: '' });
     const { error } = await supabase.rpc('corroborar_reporte', {
       p_reporte_id: reporteId,
-      p_reportante_id: reportanteId,
       p_comentario: comentario || null,
     });
     setLoading(false);
@@ -313,7 +394,6 @@ function Corroborar() {
     <Card>
       <h2 className="text-lg font-medium mb-4 text-gray-100">Corroborar un reporte</h2>
       <Input placeholder="ID del reporte" value={reporteId} onChange={(e) => setReporteId(e.target.value)} />
-      <Input placeholder="Tu identificador (se hashea)" value={reportanteId} onChange={(e) => setReportanteId(e.target.value)} />
       <Textarea placeholder="Comentario adicional (opcional)" value={comentario} onChange={(e) => setComentario(e.target.value)} />
       <Button onClick={enviar} disabled={loading}>
         {loading ? 'Enviando…' : 'Corroborar'}
