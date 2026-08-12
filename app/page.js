@@ -124,7 +124,7 @@ function Paywall() {
       const token = sessionData.session.access_token;
       const res = await fetch(
         'https://kjvuhgmkpiewtuqzyjjl.supabase.co/functions/v1/crear-pago',
-        { headers: { Authorization: `Bearer ${token}` } }
+        { method: 'POST', headers: { Authorization: `Bearer ${token}` } }
       );
       const data = await res.json();
       if (data.init_point) {
