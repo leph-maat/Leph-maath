@@ -112,48 +112,128 @@ function useEstadoCuenta(session) {
   return estado;
 }
 
-function Paywall() {
-  const [loading, setLoading] = useState(false);
+async function iniciarPago(plan) {
+  const { data: sessionData } = await supabase.auth.getSession();
+  const session = sessionData?.session;
+  if (!session) {
+    throw new Error('Necesitás iniciar sesión primero.');
+  }
+  const res = await fetch(
+    'https://kjvuhgmkpiewtuqzyjjl.supabase.co/functions/v1/crear-pago',
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ plan }),
+    }
+  );
+  const data = await res.json();
+  if (!res.ok || !data.init_point) {
+    throw new Error(data.error || 'No se pudo generar el link de pago.');
+  }
+  window.location.href = data.init_point;
+}
+
+function PlanCard({ nombre, precio, sufijo, descripcion, features, destacado, cta, onClick, loading }) {
+  return (
+    <div
+      className={`rounded-2xl p-6 flex flex-col leph-border relative ${
+        destacado ? 'bg-white/[0.04] leph-glow border-[var(--leph-gold)]/60' : 'bg-white/[0.02]'
+      }`}
+    >
+      {destacado && (
+        <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-[var(--leph-gold)] to-[var(--leph-violet)] text-black text-[10px] font-bold uppercase px-3 py-1 rounded-full">
+          Recomendado
+        </span>
+      )}
+      <div className="text-sm text-gray-300 font-medium mb-1">{nombre}</div>
+      <div className="text-2xl font-semibold text-gray-100 mb-1">
+        {precio} <span className="text-xs font-normal text-gray-500">{sufijo}</span>
+      </div>
+      <p className="text-xs text-gray-500 mb-4">{descripcion}</p>
+      <ul className="text-xs text-gray-400 space-y-2 mb-5 flex-grow">
+        {features.map((f, i) => (
+          <li key={i}>✓ {f}</li>
+        ))}
+      </ul>
+      <button
+        onClick={onClick}
+        disabled={loading}
+        className={`w-full rounded-lg px-4 py-2 text-sm font-medium transition disabled:opacity-40 ${
+          destacado
+            ? 'bg-gradient-to-r from-[var(--leph-gold)] to-[var(--leph-violet)] text-black hover:opacity-90'
+            : 'leph-border text-gray-200 hover:bg-white/5'
+        }`}
+      >
+        {loading ? 'Un momento…' : cta}
+      </button>
+    </div>
+  );
+}
+
+function Pricing({ contexto }) {
+  const [loadingPlan, setLoadingPlan] = useState(null);
   const [error, setError] = useState('');
 
-  const activar = async () => {
-    setLoading(true);
+  const comprar = async (plan) => {
+    setLoadingPlan(plan);
     setError('');
     try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData.session.access_token;
-      const res = await fetch(
-        'https://kjvuhgmkpiewtuqzyjjl.supabase.co/functions/v1/crear-pago',
-        { method: 'POST', headers: { Authorization: `Bearer ${token}` } }
-      );
-      const data = await res.json();
-      if (data.init_point) {
-        window.location.href = data.init_point;
-      } else {
-        setError(data.error || 'No se pudo generar el link de pago.');
-      }
+      await iniciarPago(plan);
     } catch (err) {
       setError(err.message);
-    } finally {
-      setLoading(false);
+      setLoadingPlan(null);
     }
   };
 
   return (
-    <div className="leph-border rounded-2xl p-6 bg-white/[0.02] text-center">
-      <h2 className="text-lg font-medium mb-2 text-gray-100">Tu prueba de 7 días terminó</h2>
-      <p className="text-sm text-gray-400 mb-4">
-        Podés seguir consultando reportes gratis siempre. Para reportar, corroborar o
-        presentar un descargo, activá tu cuenta.
-      </p>
-      <button
-        onClick={activar}
-        disabled={loading}
-        className="w-full bg-gradient-to-r from-[var(--leph-gold)] to-[var(--leph-violet)] text-black font-medium rounded-lg px-4 py-2 text-sm hover:opacity-90 transition disabled:opacity-40"
-      >
-        {loading ? 'Generando link…' : 'Activar cuenta con Mercado Pago'}
-      </button>
-      {error && <p className="text-sm text-red-400 mt-3">{error}</p>}
+    <div>
+      <div className="text-center mb-6">
+        <h2 className="text-lg font-medium text-gray-100 mb-1">
+          {contexto === 'consultas'
+            ? 'Usaste tus 3 consultas gratis'
+            : 'Tu prueba de 7 días terminó'}
+        </h2>
+        <p className="text-sm text-gray-400">Elegí cómo seguir usando Leph · MaatH.</p>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+        <PlanCard
+          nombre="Informe Único"
+          precio="$3.000"
+          sufijo="/ consulta"
+          descripcion="Para verificar a alguien puntualmente antes de alquilar."
+          features={['Acceso completo por 24hs', 'Reportar, corroborar y descargo incluidos']}
+          cta="Comprar consulta"
+          onClick={() => comprar('informe_unico')}
+          loading={loadingPlan === 'informe_unico'}
+        />
+        <PlanCard
+          nombre="Pro"
+          precio="$6.000"
+          sufijo="/ mes"
+          descripcion="Al precio de 2 consultas. Ideal para uso recurrente."
+          features={['Consultas ilimitadas', 'Reportar, corroborar y descargo ilimitados', 'Soporte prioritario']}
+          destacado
+          cta="Suscribirme a Pro"
+          onClick={() => comprar('pro_mensual')}
+          loading={loadingPlan === 'pro_mensual'}
+        />
+      </div>
+      <div className="leph-border rounded-2xl p-5 bg-white/[0.02] text-center">
+        <p className="text-sm text-gray-200 font-medium mb-1">Inmobiliarias</p>
+        <p className="text-xs text-gray-500 mb-3">
+          Múltiples propiedades y usuarios por cuenta — próximamente.
+        </p>
+        <a
+          href="mailto:hola@leph.dev?subject=Leph MaatH - Plan Inmobiliarias"
+          className="text-xs text-[var(--leph-gold)] hover:underline"
+        >
+          Contactar ventas
+        </a>
+      </div>
+      {error && <p className="text-sm text-red-400 mt-4 text-center">{error}</p>}
     </div>
   );
 }
@@ -179,8 +259,8 @@ function Ayuda() {
           </p>
           <p>
             <span className="text-gray-200 font-medium">Consultar —</span> buscá por nombre,
-            teléfono o dirección antes de cerrar un alquiler. Es gratis, sin login, para
-            siempre.
+            teléfono o dirección antes de cerrar un alquiler. Tenés 3 consultas gratis; después,
+            comprás un informe puntual o te suscribís al plan Pro para consultas ilimitadas.
           </p>
           <p>
             <span className="text-gray-200 font-medium">Reportar —</span> necesitás una cuenta
@@ -201,8 +281,7 @@ function Ayuda() {
           <p>
             <span className="text-gray-200 font-medium">Prueba gratis —</span> tenés 7 días
             desde tu primer login para reportar, corroborar y dar descargos sin costo. Pasado
-            ese plazo, activás tu cuenta con Mercado Pago en un click (consultar sigue
-            siendo gratis siempre).
+            ese plazo, elegís un plan (Informe Único o Pro) para seguir usando el sistema.
           </p>
         </div>
       )}
@@ -215,6 +294,7 @@ export default function Home() {
   const session = useSession();
   const estado = useEstadoCuenta(session);
   const bloqueado = session && estado && !estado.acceso_habilitado;
+  const accesoIlimitado = Boolean(session && estado && estado.acceso_habilitado);
 
   return (
     <main className="max-w-2xl mx-auto px-4 py-10">
@@ -251,10 +331,10 @@ export default function Home() {
         ))}
       </nav>
 
-      {tab === 'consultar' && <Consultar />}
-      {tab === 'reportar' && (!session ? <Login /> : bloqueado ? <Paywall /> : <Reportar />)}
-      {tab === 'corroborar' && (!session ? <Login /> : bloqueado ? <Paywall /> : <Corroborar />)}
-      {tab === 'descargo' && (!session ? <Login /> : bloqueado ? <Paywall /> : <Descargo />)}
+      {tab === 'consultar' && <Consultar accesoIlimitado={accesoIlimitado} />}
+      {tab === 'reportar' && (!session ? <Login /> : bloqueado ? <Pricing contexto="escritura" /> : <Reportar />)}
+      {tab === 'corroborar' && (!session ? <Login /> : bloqueado ? <Pricing contexto="escritura" /> : <Corroborar />)}
+      {tab === 'descargo' && (!session ? <Login /> : bloqueado ? <Pricing contexto="escritura" /> : <Descargo />)}
     </main>
   );
 }
@@ -354,7 +434,19 @@ function Resultado({ estado, mensaje }) {
   return <p className={`text-sm mt-3 ${color}`}>{mensaje}</p>;
 }
 
-function Consultar() {
+const LIMITE_CONSULTAS_GRATIS = 3;
+
+function consultasUsadas() {
+  if (typeof window === 'undefined') return 0;
+  return parseInt(localStorage.getItem('maath_consultas_usadas') || '0', 10);
+}
+
+function registrarConsulta() {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem('maath_consultas_usadas', String(consultasUsadas() + 1));
+}
+
+function Consultar({ accesoIlimitado }) {
   const [persona, setPersona] = useState('');
   const [telefono, setTelefono] = useState('');
   const [direccion, setDireccion] = useState('');
@@ -362,6 +454,13 @@ function Consultar() {
   const [resultados, setResultados] = useState(null);
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState({ estado: '', texto: '' });
+  const [usadas, setUsadas] = useState(0);
+
+  useEffect(() => {
+    setUsadas(consultasUsadas());
+  }, []);
+
+  const agotado = !accesoIlimitado && usadas >= LIMITE_CONSULTAS_GRATIS;
 
   const buscar = async () => {
     if (!persona && !telefono && !direccion) {
@@ -381,15 +480,29 @@ function Consultar() {
       setMsg({ estado: 'error', texto: 'Error al consultar: ' + error.message });
       return;
     }
+    if (!accesoIlimitado) {
+      registrarConsulta();
+      setUsadas(consultasUsadas());
+    }
     setResultados(data);
     if (data.length === 0) {
       setMsg({ estado: 'info', texto: 'Sin reportes encontrados para esos datos.' });
     }
   };
 
+  if (agotado) {
+    return <Pricing contexto="consultas" />;
+  }
+
   return (
     <Card>
-      <h2 className="text-lg font-medium mb-4 text-gray-100">Consultar reputación</h2>
+      <h2 className="text-lg font-medium mb-1 text-gray-100">Consultar reputación</h2>
+      {!accesoIlimitado && (
+        <p className="text-xs text-gray-500 mb-3">
+          Te quedan {Math.max(0, LIMITE_CONSULTAS_GRATIS - usadas)} consultas gratis.
+        </p>
+      )}
+      {accesoIlimitado && <p className="text-xs text-emerald-400 mb-3">Consultas ilimitadas ✓</p>}
       <Input placeholder="Nombre completo (opcional)" value={persona} onChange={(e) => setPersona(e.target.value)} />
       <Input placeholder="Teléfono (opcional)" value={telefono} onChange={(e) => setTelefono(e.target.value)} />
       <Input placeholder="Dirección (opcional)" value={direccion} onChange={(e) => setDireccion(e.target.value)} />
