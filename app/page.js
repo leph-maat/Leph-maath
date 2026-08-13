@@ -188,14 +188,50 @@ function Pricing({ contexto }) {
     }
   };
 
+  if (contexto === 'consultas') {
+    return (
+      <div className="leph-border rounded-2xl p-6 bg-white/[0.02] leph-glow text-center">
+        <h2 className="text-lg font-medium text-gray-100 mb-1">
+          Verificá la reputación de este perfil
+        </h2>
+        <p className="text-sm text-gray-400 mb-6">
+          Accedé al historial de calificaciones y antecedentes antes de confirmar.
+        </p>
+        <div className="text-left leph-border rounded-xl p-4 bg-white/[0.02] mb-4 space-y-2 text-sm">
+          <div className="flex justify-between text-gray-300">
+            <span>Consultar solo este perfil</span>
+            <span className="font-medium">$3.000 ARS</span>
+          </div>
+          <div className="flex justify-between text-[var(--leph-gold)]">
+            <span>Suscripción Anfitrión Pro (ilimitado)</span>
+            <span className="font-medium">$6.000 ARS/mes</span>
+          </div>
+        </div>
+        <button
+          onClick={() => comprar('pro_mensual')}
+          disabled={loadingPlan !== null}
+          className="w-full bg-gradient-to-r from-[var(--leph-gold)] to-[var(--leph-violet)] text-black font-medium rounded-lg px-4 py-3 text-sm hover:opacity-90 transition disabled:opacity-40 mb-3"
+        >
+          {loadingPlan === 'pro_mensual' ? 'Generando link…' : 'Activar Anfitrión Pro por $6.000/mes'}
+        </button>
+        <button
+          onClick={() => comprar('informe_unico')}
+          disabled={loadingPlan !== null}
+          className="text-xs text-gray-400 hover:text-gray-200 transition disabled:opacity-40"
+        >
+          {loadingPlan === 'informe_unico'
+            ? 'Generando link…'
+            : 'Comprar solo esta consulta por $3.000'}
+        </button>
+        {error && <p className="text-sm text-red-400 mt-4">{error}</p>}
+      </div>
+    );
+  }
+
   return (
     <div>
       <div className="text-center mb-6">
-        <h2 className="text-lg font-medium text-gray-100 mb-1">
-          {contexto === 'consultas'
-            ? 'Usaste tus 3 consultas gratis'
-            : 'Tu prueba de 7 días terminó'}
-        </h2>
+        <h2 className="text-lg font-medium text-gray-100 mb-1">Tu prueba de 7 días terminó</h2>
         <p className="text-sm text-gray-400">Elegí cómo seguir usando Leph · MaatH.</p>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
