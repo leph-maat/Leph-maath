@@ -3,7 +3,7 @@
 Sistema de reputación bidireccional para alquileres (inquilinos ↔ propietarios/inmobiliarias),
 enfocado en zonas turísticas de alta demanda. Primera zona activa: Bariloche.
 
-**Producción:** https://leph-maath-leph.vercel.app
+**Producción:** https://leph-maath.vercel.app
 **Backend:** Supabase (proyecto `kjvuhgmkpiewtuqzyjjl`, región sa-east-1)
 
 ---
