@@ -74,7 +74,7 @@ function Login() {
   );
 }
 
-function SessionBar({ session, estado }) {
+function SessionBar({ session, estado, onVerPlanes }) {
   return (
     <div className="flex justify-between items-center text-xs text-gray-500 mb-4 max-w-2xl mx-auto px-1">
       <span className="flex items-center gap-2">
@@ -86,12 +86,17 @@ function SessionBar({ session, estado }) {
         )}
         {estado && estado.pagado && <span className="text-emerald-400">· cuenta activa</span>}
       </span>
-      <button
-        onClick={() => supabase.auth.signOut()}
-        className="hover:text-gray-300 transition"
-      >
-        Cerrar sesión
-      </button>
+      <span className="flex items-center gap-3">
+        <button onClick={onVerPlanes} className="text-[var(--leph-gold)] hover:underline">
+          Ver planes
+        </button>
+        <button
+          onClick={() => supabase.auth.signOut()}
+          className="hover:text-gray-300 transition"
+        >
+          Cerrar sesión
+        </button>
+      </span>
     </div>
   );
 }
@@ -342,7 +347,7 @@ export default function Home() {
         </p>
       </header>
 
-      {session && <SessionBar session={session} estado={estado} />}
+      {session && <SessionBar session={session} estado={estado} onVerPlanes={() => setTab('planes')} />}
 
       <Ayuda />
 
@@ -371,6 +376,7 @@ export default function Home() {
       {tab === 'reportar' && (!session ? <Login /> : bloqueado ? <Pricing contexto="escritura" /> : <Reportar />)}
       {tab === 'corroborar' && (!session ? <Login /> : bloqueado ? <Pricing contexto="escritura" /> : <Corroborar />)}
       {tab === 'descargo' && (!session ? <Login /> : bloqueado ? <Pricing contexto="escritura" /> : <Descargo />)}
+      {tab === 'planes' && <Pricing contexto="escritura" />}
     </main>
   );
 }
