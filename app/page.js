@@ -44,7 +44,7 @@ function Login() {
         <p className="text-sm text-gray-200">
           Te mandamos un link mágico a <span className="text-[var(--leph-gold)]">{email}</span>.
         </p>
-        <p className="text-xs text-gray-500 mt-2">Abrilo desde este mismo dispositivo para entrar.</p>
+        <p className="text-xs text-gray-500 mt-2">Revisá tu email y tocá el link desde este mismo celular para iniciar sesión.</p>
       </div>
     );
   }
