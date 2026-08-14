@@ -209,7 +209,7 @@ function Pricing({ contexto }) {
           </div>
           <div className="flex justify-between text-[var(--leph-gold)]">
             <span>Suscripción Anfitrión Pro (ilimitado)</span>
-            <span className="font-medium">$6.000 ARS/mes</span>
+            <span className="font-medium">$20.000 ARS/mes</span>
           </div>
         </div>
         <button
@@ -217,7 +217,7 @@ function Pricing({ contexto }) {
           disabled={loadingPlan !== null}
           className="w-full bg-gradient-to-r from-[var(--leph-gold)] to-[var(--leph-violet)] text-black font-medium rounded-lg px-4 py-3 text-sm hover:opacity-90 transition disabled:opacity-40 mb-3"
         >
-          {loadingPlan === 'pro_mensual' ? 'Generando link…' : 'Activar Anfitrión Pro por $6.000/mes'}
+          {loadingPlan === 'pro_mensual' ? 'Generando link…' : 'Activar Anfitrión Pro por $20.000/mes'}
         </button>
         <button
           onClick={() => comprar('informe_unico')}
@@ -252,9 +252,9 @@ function Pricing({ contexto }) {
         />
         <PlanCard
           nombre="Pro"
-          precio="$6.000"
+          precio="$20.000"
           sufijo="/ mes"
-          descripcion="Al precio de 2 consultas. Ideal para uso recurrente."
+          descripcion="Ideal para uso recurrente: consultas y reportes sin límite."
           features={['Consultas ilimitadas', 'Reportar, corroborar y descargo ilimitados', 'Soporte prioritario']}
           destacado
           cta="Suscribirme a Pro"
