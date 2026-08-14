@@ -278,3 +278,199 @@ $$;
 --    marcar_pago() para el modelo de trial de 7 dias + pago manual
 --
 -- Ver README.md para el detalle de cada función y su estado actual.
+
+-- ============================================================
+-- PRICING Y PAGOS (Mercado Pago) — agregado
+-- ============================================================
+
+-- Tabla de perfiles: trial de 7 dias + estado de pago
+create table perfiles (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  creado_en timestamptz not null default now(),
+  pagado boolean not null default false,
+  pago_hasta date
+);
+
+alter table perfiles enable row level security;
+
+create policy "usuario ve su propio perfil"
+on perfiles for select
+to authenticated
+using (user_id = auth.uid());
+
+-- Crea el perfil automaticamente en el primer login
+create or replace function _asegurar_perfil()
+returns void
+language plpgsql
+security definer
+set search_path = extensions, vault, public, auth
+as $$
+begin
+  insert into perfiles (user_id)
+  values (auth.uid())
+  on conflict (user_id) do nothing;
+end;
+$$;
+
+-- Chequea si el usuario logueado puede escribir (trial vigente o pagado)
+create or replace function _acceso_habilitado()
+returns boolean
+language plpgsql
+security definer
+set search_path = extensions, vault, public, auth
+as $$
+declare
+  perfil record;
+begin
+  perform _asegurar_perfil();
+  select * into perfil from perfiles where user_id = auth.uid();
+  if perfil.pagado then
+    if perfil.pago_hasta is null or perfil.pago_hasta >= current_date then
+      return true;
+    end if;
+  end if;
+  return (now() - perfil.creado_en) < interval '7 days';
+end;
+$$;
+
+-- Estado de cuenta para mostrar en el frontend (dias de trial, pagado, etc)
+create or replace function mi_estado_cuenta()
+returns table (
+  creado_en timestamptz,
+  pagado boolean,
+  dias_restantes_trial int,
+  acceso_habilitado boolean
+)
+language plpgsql
+security definer
+set search_path = extensions, vault, public, auth
+as $$
+begin
+  perform _asegurar_perfil();
+  return query
+  select
+    p.creado_en,
+    p.pagado,
+    greatest(0, 7 - extract(day from (now() - p.creado_en))::int) as dias_restantes_trial,
+    _acceso_habilitado() as acceso_habilitado
+  from perfiles p
+  where p.user_id = auth.uid();
+end;
+$$;
+
+-- Activa el pago de un usuario. SOLO callable por service_role (nunca
+-- desde el cliente) — el webhook de Mercado Pago es el unico que la llama.
+-- plan 'informe_unico' = 1 dia de acceso; 'pro_mensual' = 30 dias.
+create or replace function marcar_pago(p_user_id uuid, p_plan text default 'pro_mensual')
+returns void
+language plpgsql
+security definer
+set search_path = extensions, vault, public
+as $$
+declare
+  dias int;
+begin
+  dias := case p_plan when 'informe_unico' then 1 else 30 end;
+  insert into perfiles (user_id, pagado, pago_hasta)
+  values (p_user_id, true, (current_date + dias))
+  on conflict (user_id) do update
+    set pagado = true,
+        pago_hasta = greatest(coalesce(perfiles.pago_hasta, current_date), current_date) + dias;
+end;
+$$;
+
+revoke execute on function marcar_pago(uuid, text) from public, anon, authenticated;
+grant execute on function marcar_pago(uuid, text) to service_role;
+
+-- Gatear crear_reporte / corroborar_reporte / presentar_descargo:
+-- agregar "if not _acceso_habilitado() then raise exception ... end if;"
+-- justo despues del chequeo de auth.uid() is null. Ver README para el
+-- detalle completo de cada funcion ya aplicada en Supabase.
+
+-- ------------------------------------------------------------
+-- MERCADO PAGO: token guardado en Vault
+-- ------------------------------------------------------------
+-- select vault.create_secret('APP_USR-...', 'mp_access_token');
+
+-- Lee el token de MP, solo accesible por service_role (nunca por el cliente)
+create or replace function obtener_token_mp()
+returns text
+language plpgsql
+security definer
+set search_path = extensions, vault, public
+as $$
+declare
+  token text;
+begin
+  select decrypted_secret into token
+  from vault.decrypted_secrets
+  where name = 'mp_access_token';
+  return token;
+end;
+$$;
+
+revoke execute on function obtener_token_mp() from public, anon, authenticated;
+grant execute on function obtener_token_mp() to service_role;
+
+-- ------------------------------------------------------------
+-- EDGE FUNCTIONS (Deno, deployadas directo en Supabase, no en este repo)
+-- ------------------------------------------------------------
+-- crear-pago (verify_jwt: true):
+--   Recibe { plan: 'informe_unico' | 'pro_mensual' }, valida el usuario
+--   logueado, crea una preferencia de pago en Mercado Pago (Checkout Pro)
+--   con external_reference = "<user_id>:<plan>", devuelve init_point.
+--
+-- pago-webhook (verify_jwt: false):
+--   Mercado Pago llama a esta URL cuando cambia el estado de un pago.
+--   Nunca confia en el body de la notificacion: vuelve a consultar el
+--   pago real a la API de MP con el token de Vault. Si status=approved,
+--   parsea external_reference y llama marcar_pago(user_id, plan).
+--   URL registrada en MP: https://kjvuhgmkpiewtuqzyjjl.supabase.co/functions/v1/pago-webhook
+--
+-- El codigo fuente completo de ambas funciones esta en
+-- /supabase/functions/crear-pago/index.ts y
+-- /supabase/functions/pago-webhook/index.ts en este mismo repo.
+
+-- ============================================================
+-- ACTUALIZACIONES SIGUIENTES (Mercado Pago + planes) — aplicadas
+-- directo en Supabase, documentadas acá para completar el Zep
+-- ============================================================
+
+-- Tabla perfiles: trial de 7 dias + estado de pago
+-- (ver migracion "trial_y_pago_maath" para el detalle completo)
+
+-- Planes de pago (marcar_pago ajustado a duracion por plan):
+--   informe_unico -> 1 dia de acceso completo ($3.000 ARS)
+--   pro_mensual   -> 30 dias de acceso completo ($6.000 ARS/mes, renovable)
+--
+-- create or replace function marcar_pago(p_user_id uuid, p_plan text default 'pro_mensual')
+-- Revocado a anon/authenticated. Solo ejecutable por service_role
+-- (o sea, solo desde el webhook de pago-webhook, nunca desde el cliente).
+
+-- Secreto Vault "mp_access_token": Access Token de Mercado Pago (Checkout Pro),
+-- accesible solo via obtener_token_mp() (security definer, solo service_role).
+
+-- Edge Functions desplegadas (Supabase):
+--   crear-pago    (verify_jwt: true)  -> genera preferencia de pago en MP,
+--                                        recibe { plan: 'informe_unico' | 'pro_mensual' }
+--                                        via POST + Authorization: Bearer <user JWT>
+--   pago-webhook  (verify_jwt: false) -> notification_url de MP. Verifica el pago
+--                                        REAL contra la API de MP (nunca confia en
+--                                        el body de la notificacion), y si esta
+--                                        approved llama a marcar_pago().
+--
+-- URL del webhook a cargar en el panel de Mercado Pago (Notificaciones -> Pagos):
+--   https://kjvuhgmkpiewtuqzyjjl.supabase.co/functions/v1/pago-webhook
+
+-- Modelo de negocio final:
+--   Consultar: 3 gratis (contador en localStorage del navegador, no por usuario
+--   autenticado). Al agotarse, se muestra Pricing (contexto="consultas").
+--   Reportar/Corroborar/Descargo: 7 dias de trial desde el primer login,
+--   despues requiere plan activo (Pricing contexto="escritura").
+--   Plan "Inmobiliarias": visible en la UI, sin logica real (solo mailto).
+
+-- IMPORTANTE - configuracion de Supabase Auth (dashboard, no via SQL):
+--   Site URL: https://leph-maath.vercel.app
+--   Redirect URLs: https://leph-maath.vercel.app/**
+--   (el alias -leph.vercel.app pide login de Vercel; el dominio publico es
+--   leph-maath.vercel.app sin el "-leph")
