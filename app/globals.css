@@ -6,15 +6,19 @@
 }
 
 body {
-  background: radial-gradient(ellipse at top, #12121a 0%, #0a0a0f 60%);
+  background:
+    radial-gradient(ellipse at top, #14121f 0%, #0a0a0f 55%),
+    repeating-linear-gradient(0deg, rgba(201, 162, 75, 0.025) 0px, rgba(201, 162, 75, 0.025) 1px, transparent 1px, transparent 40px),
+    repeating-linear-gradient(90deg, rgba(124, 92, 255, 0.025) 0px, rgba(124, 92, 255, 0.025) 1px, transparent 1px, transparent 40px);
+  background-attachment: fixed;
 }
 
 .leph-border {
-  border: 1px solid rgba(201, 162, 75, 0.25);
+  border: 1px solid rgba(201, 162, 75, 0.3);
 }
 
 .leph-glow {
-  box-shadow: 0 0 20px rgba(124, 92, 255, 0.15);
+  box-shadow: 0 0 30px rgba(124, 92, 255, 0.2), 0 0 60px rgba(201, 162, 75, 0.06);
 }
 
 .leph-title {
@@ -22,4 +26,37 @@ body {
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
+  text-shadow: 0 0 40px rgba(124, 92, 255, 0.25);
+}
+
+.leph-glass {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.01));
+  backdrop-filter: blur(6px);
+  border: 1px solid rgba(201, 162, 75, 0.3);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+.leph-glass-featured {
+  background: linear-gradient(180deg, rgba(201, 162, 75, 0.08), rgba(124, 92, 255, 0.05));
+  backdrop-filter: blur(6px);
+  border: 1px solid rgba(201, 162, 75, 0.55);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 0 40px rgba(124, 92, 255, 0.25),
+    0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+.leph-symbol-bg {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.05;
+  background-image:
+    linear-gradient(60deg, transparent 48%, rgba(201, 162, 75, 0.4) 49%, rgba(201, 162, 75, 0.4) 51%, transparent 52%),
+    linear-gradient(-60deg, transparent 48%, rgba(124, 92, 255, 0.4) 49%, rgba(124, 92, 255, 0.4) 51%, transparent 52%);
+  background-size: 120px 200px;
+  background-position: 0 0, 60px 0;
 }

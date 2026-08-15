@@ -40,7 +40,7 @@ function Login() {
 
   if (enviado) {
     return (
-      <div className="leph-border rounded-2xl p-6 bg-white/[0.02] text-center">
+      <div className="leph-glass rounded-2xl p-6 text-center">
         <p className="text-sm text-gray-200">
           Te mandamos un link mágico a <span className="text-[var(--leph-gold)]">{email}</span>.
         </p>
@@ -50,7 +50,7 @@ function Login() {
   }
 
   return (
-    <div className="leph-border rounded-2xl p-6 bg-white/[0.02]">
+    <div className="leph-glass rounded-2xl p-6">
       <h2 className="text-lg font-medium mb-2 text-gray-100">Iniciá sesión</h2>
       <p className="text-xs text-gray-500 mb-4">
         Necesario para reportar, corroborar o presentar un descargo. Sin contraseña — te mandamos un link a tu email.
@@ -144,8 +144,8 @@ async function iniciarPago(plan) {
 function PlanCard({ nombre, precio, sufijo, descripcion, features, destacado, cta, onClick, loading }) {
   return (
     <div
-      className={`rounded-2xl p-6 flex flex-col leph-border relative ${
-        destacado ? 'bg-white/[0.04] leph-glow border-[var(--leph-gold)]/60' : 'bg-white/[0.02]'
+      className={`rounded-2xl p-6 flex flex-col relative ${
+        destacado ? 'leph-glass-featured' : 'leph-glass'
       }`}
     >
       {destacado && (
@@ -195,7 +195,7 @@ function Pricing({ contexto }) {
 
   if (contexto === 'consultas') {
     return (
-      <div className="leph-border rounded-2xl p-6 bg-white/[0.02] leph-glow text-center">
+      <div className="leph-glass leph-glow rounded-2xl p-6 text-center">
         <h2 className="text-lg font-medium text-gray-100 mb-1">
           Verificá la reputación de este perfil
         </h2>
@@ -262,7 +262,7 @@ function Pricing({ contexto }) {
           loading={loadingPlan === 'pro_mensual'}
         />
       </div>
-      <div className="leph-border rounded-2xl p-5 bg-white/[0.02] text-center">
+      <div className="leph-glass rounded-2xl p-5 text-center">
         <p className="text-sm text-gray-200 font-medium mb-1">Inmobiliarias</p>
         <p className="text-xs text-gray-500 mb-3">
           Múltiples propiedades y usuarios por cuenta — próximamente.
@@ -282,7 +282,7 @@ function Pricing({ contexto }) {
 function Ayuda() {
   const [abierto, setAbierto] = useState(false);
   return (
-    <div className="leph-border rounded-2xl bg-white/[0.02] mb-8">
+    <div className="leph-glass rounded-2xl mb-8">
       <button
         onClick={() => setAbierto(!abierto)}
         className="w-full flex justify-between items-center px-5 py-3 text-sm text-gray-300"
@@ -338,7 +338,9 @@ export default function Home() {
   const accesoIlimitado = Boolean(session && estado && estado.acceso_habilitado);
 
   return (
-    <main className="max-w-2xl mx-auto px-4 py-10">
+    <>
+    <div className="leph-symbol-bg" />
+    <main className="max-w-2xl mx-auto px-4 py-10 relative z-10">
       <header className="mb-6 text-center">
         <div className="text-3xl font-semibold leph-title mb-1">⟁ Leph · MaatH</div>
         <p className="text-sm text-gray-400">
@@ -378,12 +380,13 @@ export default function Home() {
       {tab === 'descargo' && (!session ? <Login /> : bloqueado ? <Pricing contexto="escritura" /> : <Descargo />)}
       {tab === 'planes' && <Pricing contexto="escritura" />}
     </main>
+    </>
   );
 }
 
 function Card({ children }) {
   return (
-    <div className="leph-border rounded-2xl p-6 bg-white/[0.02] backdrop-blur">
+    <div className="leph-glass rounded-2xl p-6">
       {children}
     </div>
   );
