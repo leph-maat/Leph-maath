@@ -320,6 +320,18 @@ function Ayuda() {
             confirme.
           </p>
           <p>
+            <span className="text-gray-200 font-medium">Reseñar —</span> si tuviste una buena
+            experiencia con alguien, dejale una reseña positiva. Es lo que hace subir sus
+            triángulos ⟁ de reputación — sin reseñas positivas, el sistema solo puede
+            mostrar lo negativo.
+          </p>
+          <p>
+            <span className="text-gray-200 font-medium">Reputación (⟁⟁⟁⟁⟁) —</span> al
+            consultar a alguien con historial, ves su reputación como triángulos llenos (0 a
+            5), calculados entre reseñas positivas y reportes negativos (los verificados
+            pesan más).
+          </p>
+          <p>
             <span className="text-gray-200 font-medium">Prueba gratis —</span> tenés 7 días
             desde tu primer login para reportar, corroborar y dar descargos sin costo. Pasado
             ese plazo, elegís un plan (Informe Único o Pro) para seguir usando el sistema.
@@ -357,6 +369,7 @@ export default function Home() {
         {[
           ['consultar', 'Consultar'],
           ['reportar', 'Reportar'],
+          ['resenar', 'Reseñar'],
           ['corroborar', 'Corroborar'],
           ['descargo', 'Descargo'],
         ].map(([key, label]) => (
@@ -376,6 +389,7 @@ export default function Home() {
 
       {tab === 'consultar' && <Consultar accesoIlimitado={accesoIlimitado} />}
       {tab === 'reportar' && (!session ? <Login /> : bloqueado ? <Pricing contexto="escritura" /> : <Reportar />)}
+      {tab === 'resenar' && (!session ? <Login /> : bloqueado ? <Pricing contexto="escritura" /> : <Resenar />)}
       {tab === 'corroborar' && (!session ? <Login /> : bloqueado ? <Pricing contexto="escritura" /> : <Corroborar />)}
       {tab === 'descargo' && (!session ? <Login /> : bloqueado ? <Pricing contexto="escritura" /> : <Descargo />)}
       {tab === 'planes' && <Pricing contexto="escritura" />}
@@ -497,6 +511,7 @@ function Consultar({ accesoIlimitado }) {
   const [direccion, setDireccion] = useState('');
   const [zona, setZona] = useState('');
   const [resultados, setResultados] = useState(null);
+  const [reputacion, setReputacion] = useState(null);
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState({ estado: '', texto: '' });
   const [usadas, setUsadas] = useState(0);
@@ -514,16 +529,28 @@ function Consultar({ accesoIlimitado }) {
     }
     setLoading(true);
     setMsg({ estado: '', texto: '' });
-    const { data, error } = await supabase.rpc('consultar_reporte', {
-      p_persona: persona || null,
-      p_telefono: telefono || null,
-      p_direccion: direccion || null,
-      p_zona: zona || null,
-    });
+    const [{ data, error }, { data: repData, error: repError }] = await Promise.all([
+      supabase.rpc('consultar_reporte', {
+        p_persona: persona || null,
+        p_telefono: telefono || null,
+        p_direccion: direccion || null,
+        p_zona: zona || null,
+      }),
+      supabase.rpc('calcular_reputacion', {
+        p_persona: persona || null,
+        p_telefono: telefono || null,
+        p_direccion: direccion || null,
+      }),
+    ]);
     setLoading(false);
     if (error) {
       setMsg({ estado: 'error', texto: 'Error al consultar: ' + error.message });
       return;
+    }
+    if (!repError && repData && repData.length > 0) {
+      setReputacion(repData[0]);
+    } else {
+      setReputacion(null);
     }
     if (!accesoIlimitado) {
       registrarConsulta();
@@ -557,23 +584,46 @@ function Consultar({ accesoIlimitado }) {
       </Button>
       <Resultado estado={msg.estado} mensaje={msg.texto} />
 
+      {reputacion && (
+        <div className="leph-border rounded-lg p-3 bg-black/20 mt-4 flex items-center justify-between">
+          <span className="text-xs text-gray-400">Reputación general</span>
+          <div className="flex items-center gap-2">
+            <Triangulos llenos={reputacion.triangulos_llenos} tieneDatos={reputacion.tiene_datos} />
+            {reputacion.tiene_datos && (
+              <span className="text-xs text-gray-500">
+                ({reputacion.total_positivas} positivas · {reputacion.total_negativas} negativas)
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
       {resultados && resultados.length > 0 && (
-        <div className="mt-5 space-y-3">
+        <div className="mt-3 space-y-3">
           {resultados.map((r) => (
-            <div key={r.id} className="leph-border rounded-lg p-3 bg-black/20">
+            <div
+              key={r.id}
+              className={`leph-border rounded-lg p-3 ${
+                r.sentimiento === 'positivo' ? 'bg-emerald-500/5' : 'bg-black/20'
+              }`}
+            >
               <div className="flex justify-between text-xs text-gray-400 mb-1">
-                <span className="uppercase tracking-wide">{r.rol}</span>
-                <span
-                  className={
-                    r.estado === 'verificado'
-                      ? 'text-emerald-400'
-                      : r.estado === 'en_disputa'
-                      ? 'text-amber-400'
-                      : 'text-gray-400'
-                  }
-                >
-                  {r.estado} · {r.corroboraciones} corrob.
+                <span className="uppercase tracking-wide flex items-center gap-1">
+                  {r.sentimiento === 'positivo' ? '⟁ positiva' : r.rol}
                 </span>
+                {r.sentimiento === 'negativo' && (
+                  <span
+                    className={
+                      r.estado === 'verificado'
+                        ? 'text-emerald-400'
+                        : r.estado === 'en_disputa'
+                        ? 'text-amber-400'
+                        : 'text-gray-400'
+                    }
+                  >
+                    {r.estado} · {r.corroboraciones} corrob.
+                  </span>
+                )}
               </div>
               <p className="text-sm text-gray-200 font-medium">{r.motivo}</p>
               <p className="text-sm text-gray-400">{r.descripcion}</p>
@@ -645,6 +695,83 @@ function Reportar() {
       </Button>
       <Resultado estado={msg.estado} mensaje={msg.texto} />
     </Card>
+  );
+}
+
+function Resenar() {
+  const [rol, setRol] = useState('inquilino');
+  const [persona, setPersona] = useState('');
+  const [telefono, setTelefono] = useState('');
+  const [direccion, setDireccion] = useState('');
+  const [zona, setZona] = useState('bariloche');
+  const [comentario, setComentario] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [msg, setMsg] = useState({ estado: '', texto: '' });
+
+  const enviar = async () => {
+    if (!comentario || (!persona && !telefono && !direccion)) {
+      setMsg({ estado: 'error', texto: 'Completá tu comentario y al menos un dato de la persona.' });
+      return;
+    }
+    setLoading(true);
+    setMsg({ estado: '', texto: '' });
+    try {
+      const { data, error } = await supabase.rpc('crear_reporte', {
+        p_rol: rol,
+        p_motivo: 'Reseña positiva',
+        p_descripcion: comentario,
+        p_persona: persona || null,
+        p_telefono: telefono || null,
+        p_direccion: direccion || null,
+        p_zona: zona,
+        p_sentimiento: 'positivo',
+      });
+      if (error) throw error;
+      setMsg({ estado: 'ok', texto: `¡Gracias! Reseña publicada (id: ${data}).` });
+      setComentario('');
+    } catch (err) {
+      setMsg({ estado: 'error', texto: err.message });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Card>
+      <h2 className="text-lg font-medium mb-1 text-gray-100">Dejar reseña positiva</h2>
+      <p className="text-xs text-gray-500 mb-4">
+        Sumá puntos de reputación a alguien con quien tuviste una buena experiencia.
+      </p>
+      <Select value={rol} onChange={(e) => setRol(e.target.value)} options={['inquilino', 'propietario', 'inmobiliaria']} />
+      <Input placeholder="Nombre completo (opcional)" value={persona} onChange={(e) => setPersona(e.target.value)} />
+      <Input placeholder="Teléfono (opcional)" value={telefono} onChange={(e) => setTelefono(e.target.value)} />
+      <Input placeholder="Dirección/propiedad (opcional)" value={direccion} onChange={(e) => setDireccion(e.target.value)} />
+      <Select value={zona} onChange={(e) => setZona(e.target.value)} options={ZONAS} />
+      <Textarea placeholder="Contá tu buena experiencia" value={comentario} onChange={(e) => setComentario(e.target.value)} />
+      <Button onClick={enviar} disabled={loading}>
+        {loading ? 'Enviando…' : 'Publicar reseña'}
+      </Button>
+      <Resultado estado={msg.estado} mensaje={msg.texto} />
+    </Card>
+  );
+}
+
+function Triangulos({ llenos, tieneDatos }) {
+  if (!tieneDatos) {
+    return <span className="text-xs text-gray-500">Sin reseñas suficientes todavía</span>;
+  }
+  return (
+    <span className="inline-flex items-center gap-0.5" title={`${llenos}/5`}>
+      {[1, 2, 3, 4, 5].map((i) => (
+        <span
+          key={i}
+          className={i <= llenos ? 'text-[var(--leph-gold)]' : 'text-gray-700'}
+          style={{ fontSize: '14px' }}
+        >
+          ⟁
+        </span>
+      ))}
+    </span>
   );
 }
 
