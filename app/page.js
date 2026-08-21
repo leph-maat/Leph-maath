@@ -765,7 +765,7 @@ function Triangulos({ llenos, tieneDatos }) {
       {[1, 2, 3, 4, 5].map((i) => (
         <span
           key={i}
-          className={i <= llenos ? 'text-[var(--leph-gold)]' : 'text-gray-700'}
+          className={i <= llenos ? 'text-[var(--leph-gold)]' : 'text-gray-500'}
           style={{ fontSize: '14px' }}
         >
           ⟁
