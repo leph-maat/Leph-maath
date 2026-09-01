@@ -1,4 +1,5 @@
 import './globals.css';
+import SiteHeader from '@/components/SiteHeader';
 
 export const metadata = {
   title: 'Leph · MaatH',
@@ -14,6 +15,7 @@ export default function RootLayout({ children }) {
   return (
     <html lang="es">
       <body className="bg-[#0a0a0f] text-gray-200 min-h-screen antialiased">
+        <SiteHeader />
         {children}
       </body>
     </html>
