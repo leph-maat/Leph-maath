@@ -205,11 +205,11 @@ function Pricing({ contexto }) {
         <div className="text-left leph-border rounded-xl p-4 bg-white/[0.02] mb-4 space-y-2 text-sm">
           <div className="flex justify-between text-gray-300">
             <span>Consultar solo este perfil</span>
-            <span className="font-medium">$5.000 ARS</span>
+            <span className="font-medium">$3.000 ARS</span>
           </div>
           <div className="flex justify-between text-[var(--leph-gold)]">
             <span>Suscripción Anfitrión Pro (ilimitado)</span>
-            <span className="font-medium">$12.000 ARS/mes</span>
+            <span className="font-medium">$20.000 ARS/mes</span>
           </div>
         </div>
         <button
@@ -217,7 +217,7 @@ function Pricing({ contexto }) {
           disabled={loadingPlan !== null}
           className="w-full bg-gradient-to-r from-[var(--leph-gold)] to-[var(--leph-violet)] text-black font-medium rounded-lg px-4 py-3 text-sm hover:opacity-90 transition disabled:opacity-40 mb-3"
         >
-          {loadingPlan === 'pro_mensual' ? 'Generando link…' : 'Activar Anfitrión Pro por $12.000/mes'}
+          {loadingPlan === 'pro_mensual' ? 'Generando link…' : 'Activar Anfitrión Pro por $20.000/mes'}
         </button>
         <button
           onClick={() => comprar('informe_unico')}
@@ -226,7 +226,7 @@ function Pricing({ contexto }) {
         >
           {loadingPlan === 'informe_unico'
             ? 'Generando link…'
-            : 'Comprar solo esta consulta por $5.000'}
+            : 'Comprar solo esta consulta por $3.000'}
         </button>
         {error && <p className="text-sm text-red-400 mt-4">{error}</p>}
       </div>
@@ -242,7 +242,7 @@ function Pricing({ contexto }) {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
         <PlanCard
           nombre="Informe Único"
-          precio="$5.000"
+          precio="$3.000"
           sufijo="/ consulta"
           descripcion="Para verificar a alguien puntualmente antes de alquilar."
           features={['Acceso completo por 24hs', 'Reportar, corroborar y descargo incluidos']}
@@ -252,7 +252,7 @@ function Pricing({ contexto }) {
         />
         <PlanCard
           nombre="Pro"
-          precio="$12.000"
+          precio="$20.000"
           sufijo="/ mes"
           descripcion="Ideal para uso recurrente: consultas y reportes sin límite."
           features={['Consultas ilimitadas', 'Reportar, corroborar y descargo ilimitados', 'Soporte prioritario']}
@@ -344,6 +344,16 @@ function Ayuda() {
 
 export default function Home() {
   const [tab, setTab] = useState('consultar');
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const tabParam = params.get('tab');
+    if (['consultar', 'reportar', 'resenar', 'corroborar', 'descargo', 'planes'].includes(tabParam)) {
+      setTab(tabParam);
+    }
+  }, []);
+
   const session = useSession();
   const estado = useEstadoCuenta(session);
   const bloqueado = session && estado && !estado.acceso_habilitado;
@@ -515,6 +525,15 @@ function Consultar({ accesoIlimitado }) {
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState({ estado: '', texto: '' });
   const [usadas, setUsadas] = useState(0);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const tel = params.get('telefono');
+    const q = params.get('q');
+    if (tel) setTelefono(tel);
+    if (q) setPersona(q);
+  }, []);
 
   useEffect(() => {
     setUsadas(consultasUsadas());
