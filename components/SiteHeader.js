@@ -46,7 +46,7 @@ export default function SiteHeader() {
             </button>
           ) : (
             <Link
-              href="/"
+              href="/?tab=reportar"
               className="px-3 py-1.5 rounded-full bg-gradient-to-r from-[var(--leph-gold)] to-[var(--leph-violet)] text-black font-medium hover:opacity-90 transition"
             >
               Iniciar sesión
@@ -57,4 +57,3 @@ export default function SiteHeader() {
     </div>
   );
 }
-
