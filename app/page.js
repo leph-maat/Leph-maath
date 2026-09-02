@@ -205,11 +205,11 @@ function Pricing({ contexto }) {
         <div className="text-left leph-border rounded-xl p-4 bg-white/[0.02] mb-4 space-y-2 text-sm">
           <div className="flex justify-between text-gray-300">
             <span>Consultar solo este perfil</span>
-            <span className="font-medium">$3.000 ARS</span>
+            <span className="font-medium">$5.000 ARS</span>
           </div>
           <div className="flex justify-between text-[var(--leph-gold)]">
             <span>Suscripción Anfitrión Pro (ilimitado)</span>
-            <span className="font-medium">$20.000 ARS/mes</span>
+            <span className="font-medium">$12.000 ARS/mes</span>
           </div>
         </div>
         <button
@@ -217,7 +217,7 @@ function Pricing({ contexto }) {
           disabled={loadingPlan !== null}
           className="w-full bg-gradient-to-r from-[var(--leph-gold)] to-[var(--leph-violet)] text-black font-medium rounded-lg px-4 py-3 text-sm hover:opacity-90 transition disabled:opacity-40 mb-3"
         >
-          {loadingPlan === 'pro_mensual' ? 'Generando link…' : 'Activar Anfitrión Pro por $20.000/mes'}
+          {loadingPlan === 'pro_mensual' ? 'Generando link…' : 'Activar Anfitrión Pro por $12.000/mes'}
         </button>
         <button
           onClick={() => comprar('informe_unico')}
@@ -226,7 +226,7 @@ function Pricing({ contexto }) {
         >
           {loadingPlan === 'informe_unico'
             ? 'Generando link…'
-            : 'Comprar solo esta consulta por $3.000'}
+            : 'Comprar solo esta consulta por $5.000'}
         </button>
         {error && <p className="text-sm text-red-400 mt-4">{error}</p>}
       </div>
@@ -242,7 +242,7 @@ function Pricing({ contexto }) {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
         <PlanCard
           nombre="Informe Único"
-          precio="$3.000"
+          precio="$5.000"
           sufijo="/ consulta"
           descripcion="Para verificar a alguien puntualmente antes de alquilar."
           features={['Acceso completo por 24hs', 'Reportar, corroborar y descargo incluidos']}
@@ -252,7 +252,7 @@ function Pricing({ contexto }) {
         />
         <PlanCard
           nombre="Pro"
-          precio="$20.000"
+          precio="$12.000"
           sufijo="/ mes"
           descripcion="Ideal para uso recurrente: consultas y reportes sin límite."
           features={['Consultas ilimitadas', 'Reportar, corroborar y descargo ilimitados', 'Soporte prioritario']}
